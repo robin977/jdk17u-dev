@@ -318,10 +318,10 @@ HeapWord* G1CollectedHeap::humongous_obj_allocate(size_t word_size) {
   assert_heap_locked_or_at_safepoint(true /* should_be_vm_thread */);
 
   _verifier->verify_region_sets_optional();
-
+  //分配给humongous对象的区域数量
   uint obj_regions = (uint) humongous_obj_size_in_regions(word_size);
 
-  // Policy: First try to allocate a humongous object in the free list.
+  // Policy: First try to allocate a humongous object in the free list. 首先尝试在空闲列表中分配一个humongous对象。
   HeapRegion* humongous_start = _hrm.allocate_humongous(obj_regions);
   if (humongous_start == NULL) {
     // Policy: We could not find enough regions for the humongous object in the
@@ -330,8 +330,7 @@ HeapWord* G1CollectedHeap::humongous_obj_allocate(size_t word_size) {
     humongous_start = _hrm.expand_and_allocate_humongous(obj_regions);
     if (humongous_start != NULL) {
       // We managed to find a region by expanding the heap.
-      log_debug(gc, ergo, heap)("Heap expansion (humongous allocation request). Allocation request: " SIZE_FORMAT "B",
-                                word_size * HeapWordSize);
+      log_debug(gc, ergo, heap)("Heap expansion (humongous allocation request). Allocation request: " SIZE_FORMAT "B",word_size * HeapWordSize);
       policy()->record_new_heap_size(num_regions());
     } else {
       // Policy: Potentially trigger a defragmentation GC.
@@ -369,6 +368,7 @@ G1CollectedHeap::mem_allocate(size_t word_size,
   assert_heap_not_locked_and_not_at_safepoint();
 
   if (is_humongous(word_size)) {
+      log_info(gc)("mem_allocate word_size is_humongous:" SIZE_FORMAT,word_size);
     return attempt_allocation_humongous(word_size);
   }
   size_t dummy = 0;
@@ -392,6 +392,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size) {
   // fails to perform the allocation. b) is the only case when we'll
   // return NULL.
   HeapWord* result = NULL;
+    //循环直到申请成功或者GC后申请失败
   for (uint try_count = 1, gclocker_retry_count = 0; /* we'll return */; try_count += 1) {
     bool should_try_gc;
     bool preventive_collection_required = false;
@@ -399,7 +400,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size) {
 
     {
       MutexLocker x(Heap_lock);
-
+        log_info(gc)("try_count %d get MutexLocker alloc memory :" SIZE_FORMAT,try_count,word_size);
       // Now that we have the lock, we first retry the allocation in case another
       // thread changed the region while we were waiting to acquire the lock.
       size_t actual_size;
@@ -441,29 +442,26 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size) {
     if (should_try_gc) {
       GCCause::Cause gc_cause = preventive_collection_required ? GCCause::_g1_preventive_collection
                                                               : GCCause::_g1_inc_collection_pause;
+        log_info(gc, alloc)("attempt_allocation_slow need gc");
       bool succeeded;
       result = do_collection_pause(word_size, gc_count_before, &succeeded, gc_cause);
       if (result != NULL) {
         assert(succeeded, "only way to get back a non-NULL result");
-        log_trace(gc, alloc)("%s: Successfully scheduled collection returning " PTR_FORMAT,
-                             Thread::current()->name(), p2i(result));
+        log_info(gc, alloc)("%s: Successfully scheduled collection returning " PTR_FORMAT,Thread::current()->name(), p2i(result));
         return result;
       }
 
       if (succeeded) {
         // We successfully scheduled a collection which failed to allocate. No
         // point in trying to allocate further. We'll just return NULL.
-        log_trace(gc, alloc)("%s: Successfully scheduled collection failing to allocate "
-                             SIZE_FORMAT " words", Thread::current()->name(), word_size);
+          log_info(gc, alloc)("%s: Successfully scheduled collection failing to allocate " SIZE_FORMAT " words", Thread::current()->name(), word_size);
         return NULL;
       }
-      log_trace(gc, alloc)("%s: Unsuccessfully scheduled collection allocating " SIZE_FORMAT " words",
-                           Thread::current()->name(), word_size);
+      log_trace(gc, alloc)("%s: Unsuccessfully scheduled collection allocating " SIZE_FORMAT " words", Thread::current()->name(), word_size);
     } else {
       // Failed to schedule a collection.
       if (gclocker_retry_count > GCLockerRetryAllocationCount) {
-        log_warning(gc, alloc)("%s: Retried waiting for GCLocker too often allocating "
-                               SIZE_FORMAT " words", Thread::current()->name(), word_size);
+        log_warning(gc, alloc)("%s: Retried waiting for GCLocker too often allocating " SIZE_FORMAT " words", Thread::current()->name(), word_size);
         return NULL;
       }
       log_trace(gc, alloc)("%s: Stall until clear", Thread::current()->name());
@@ -844,9 +842,9 @@ HeapWord* G1CollectedHeap::attempt_allocation_humongous(size_t word_size) {
   // need to start a marking cycle at each humongous object allocation. We do
   // the check before we do the actual allocation. The reason for doing it
   // before the allocation is that we avoid having to keep track of the newly
-  // allocated memory while we do a GC.
-  if (policy()->need_to_start_conc_mark("concurrent humongous allocation",
-                                        word_size)) {
+  // allocated memory while we do a GC.巨大的对象会很快耗尽堆,所以我们应该检查是否需要在每个巨大的对象分配时启动一个标记周期
+  if (policy()->need_to_start_conc_mark("concurrent humongous allocation",word_size)) {
+      log_info(gc)("alloc [humongous object] before start_conc_mark");
     collect(GCCause::_g1_humongous_allocation);
   }
 
@@ -869,7 +867,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_humongous(size_t word_size) {
       if (!preventive_collection_required) {
         // Given that humongous objects are not allocated in young
         // regions, we'll first try to do the allocation without doing a
-        // collection hoping that there's enough space in the heap.
+        // collection hoping that there's enough space in the heap. 如果在年轻的区域中没有分配巨大的对象，我们将首先尝试在不进行收集的情况下进行分配，希望堆中有足够的空间
         result = humongous_obj_allocate(word_size);
         if (result != NULL) {
           policy()->old_gen_alloc_tracker()->
@@ -887,14 +885,12 @@ HeapWord* G1CollectedHeap::attempt_allocation_humongous(size_t word_size) {
     }
 
     if (should_try_gc) {
-      GCCause::Cause gc_cause = preventive_collection_required ? GCCause::_g1_preventive_collection
-                                                              : GCCause::_g1_humongous_allocation;
+      GCCause::Cause gc_cause = preventive_collection_required ? GCCause::_g1_preventive_collection : GCCause::_g1_humongous_allocation;
       bool succeeded;
       result = do_collection_pause(word_size, gc_count_before, &succeeded, gc_cause);
       if (result != NULL) {
         assert(succeeded, "only way to get back a non-NULL result");
-        log_trace(gc, alloc)("%s: Successfully scheduled collection returning " PTR_FORMAT,
-                             Thread::current()->name(), p2i(result));
+        log_trace(gc, alloc)("%s: Successfully scheduled collection returning " PTR_FORMAT,Thread::current()->name(), p2i(result));
         size_t size_in_regions = humongous_obj_size_in_regions(word_size);
         policy()->old_gen_alloc_tracker()->
           record_collection_pause_humongous_allocation(size_in_regions * HeapRegion::GrainBytes);
@@ -1600,8 +1596,11 @@ jint G1CollectedHeap::initialize() {
   // Create the barrier set for the entire reserved region.
   G1CardTable* ct = new G1CardTable(heap_rs.region());
   ct->initialize();
+  log_info(gc,init)("created G1CardTable");
+
   G1BarrierSet* bs = new G1BarrierSet(ct);
   bs->initialize();
+  log_info(gc,init)("created G1BarrierSet");
   assert(bs->is_a(BarrierSet::G1BarrierSet), "sanity");
   BarrierSet::set_barrier_set(bs);
   _card_table = ct;
@@ -1614,7 +1613,7 @@ jint G1CollectedHeap::initialize() {
 
   // Create the hot card cache.
   _hot_card_cache = new G1HotCardCache(this);
-
+    log_info(gc,init)("Create space mappers. page_size " SIZE_FORMAT,heap_rs.page_size());
   // Create space mappers.
   size_t page_size = heap_rs.page_size();
   G1RegionToSpaceMapper* heap_storage =
@@ -1693,7 +1692,7 @@ jint G1CollectedHeap::initialize() {
     _region_attr.initialize(reserved(), granularity);
     _humongous_reclaim_candidates.initialize(reserved(), granularity);
   }
-
+    //gc thread
   _workers = new WorkGang("GC Thread", ParallelGCThreads,
                           true /* are_GC_task_threads */,
                           false /* are_ConcurrentGC_threads */);
@@ -2723,7 +2722,7 @@ void G1CollectedHeap::print_taskqueue_stats() const {
   }
   Log(gc, task, stats) log;
   ResourceMark rm;
-  LogStream ls(log.trace());
+  LogStream ls(log.debug());
   outputStream* st = &ls;
 
   print_taskqueue_stats_hdr(st);
@@ -2794,6 +2793,7 @@ void G1CollectedHeap::start_new_collection_set() {
 void G1CollectedHeap::calculate_collection_set(G1EvacuationInfo* evacuation_info, double target_pause_time_ms) {
 
   _collection_set.finalize_initial_collection_set(target_pause_time_ms, &_survivor);
+  //设置rset收集区域
   evacuation_info->set_collectionset_regions(collection_set()->region_length() +
                                             collection_set()->optional_region_length());
 
@@ -2852,6 +2852,7 @@ void G1CollectedHeap::expand_heap_after_young_collection(){
 }
 
 void G1CollectedHeap::set_young_gc_name(char* young_gc_name) {
+  log_info(gc)("set_young_gc_name %s",young_gc_name);
   G1GCPauseType pause_type =
     // The strings for all Concurrent Start pauses are the same, so the parameter
     // does not matter here.
@@ -2861,7 +2862,7 @@ void G1CollectedHeap::set_young_gc_name(char* young_gc_name) {
            "Pause Young (%s)",
            G1GCPauseTypeHelper::to_string(pause_type));
 }
-
+//YGC的回收过程开始
 bool G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
   assert_at_safepoint_on_vm_thread();
   guarantee(!is_gc_active(), "collection is not reentrant");
@@ -3136,7 +3137,7 @@ bool G1ParEvacuateFollowersClosure::offer_termination() {
   event.commit(GCId::current(), pss->worker_id(), G1GCPhaseTimes::phase_name(G1GCPhaseTimes::Termination));
   return res;
 }
-
+//对象复制
 void G1ParEvacuateFollowersClosure::do_void() {
   EventGCPhaseParallel event;
   G1ParScanThreadState* const pss = par_scan_state();
@@ -3596,6 +3597,7 @@ protected:
     G1GCPhaseTimes* p = _g1h->phase_times();
 
     Ticks start = Ticks::now();
+    //对象复制闭包类
     G1ParEvacuateFollowersClosure cl(_g1h, pss, _task_queues, &_terminator, objcopy_phase);
     cl.do_void();
 
@@ -3647,7 +3649,7 @@ public:
       pss->set_ref_discoverer(_g1h->ref_processor_stw());
 
       scan_roots(pss, worker_id);
-      evacuate_live_objects(pss, worker_id);
+      evacuate_live_objects(pss, worker_id);  //撤退存活对象
     }
 
     end_work(worker_id);

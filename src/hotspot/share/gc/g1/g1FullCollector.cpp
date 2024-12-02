@@ -191,19 +191,19 @@ void G1FullCollector::prepare_collection() {
   // Clear and activate derived pointer collection.
   clear_and_activate_derived_pointers();
 }
-
+//g1
 void G1FullCollector::collect() {
-  phase1_mark_live_objects();
+  phase1_mark_live_objects(); //标记阶段
   verify_after_marking();
 
   // Don't add any more derived pointers during later phases
   deactivate_derived_pointers();
 
-  phase2_prepare_compaction();
+  phase2_prepare_compaction(); //复制和回收准备阶段
 
-  phase3_adjust_pointers();
+  phase3_adjust_pointers();  //调整指针阶段
 
-  phase4_do_compaction();
+  phase4_do_compaction();  //压缩清理阶段
 }
 
 void G1FullCollector::complete_collection() {

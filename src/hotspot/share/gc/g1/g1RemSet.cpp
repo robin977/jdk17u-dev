@@ -1009,7 +1009,7 @@ public:
   size_t opt_refs_scanned() const { return _opt_refs_scanned; }
   size_t opt_refs_memory_used() const { return _opt_refs_memory_used; }
 };
-
+//处理RSet
 void G1RemSet::scan_collection_set_regions(G1ParScanThreadState* pss,
                                            uint worker_id,
                                            G1GCPhaseTimes::GCParPhases scan_phase,

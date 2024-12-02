@@ -519,6 +519,7 @@ void G1CollectionSet::move_candidates_to_collection_set(uint num_old_candidate_r
 }
 
 void G1CollectionSet::finalize_initial_collection_set(double target_pause_time_ms, G1SurvivorRegions* survivor) {
+  //会在将所有Eden和Survivor Region加入CSet后准备垃圾回收
   double time_remaining_ms = finalize_young_part(target_pause_time_ms, survivor);
   finalize_old_part(time_remaining_ms);
 }

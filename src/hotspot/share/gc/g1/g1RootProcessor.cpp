@@ -22,6 +22,7 @@
  *
  */
 
+#include <logging/logStream.hpp>
 #include "precompiled.hpp"
 #include "classfile/classLoaderDataGraph.hpp"
 #include "classfile/stringTable.hpp"
@@ -45,22 +46,28 @@
 #include "runtime/mutex.hpp"
 #include "utilities/enumIterator.hpp"
 #include "utilities/macros.hpp"
+#include "logging/log.hpp"
 
 G1RootProcessor::G1RootProcessor(G1CollectedHeap* g1h, uint n_workers) :
     _g1h(g1h),
     _process_strong_tasks(G1RP_PS_NumElements),
     _srs(n_workers) {}
-
+//清理根集
 void G1RootProcessor::evacuate_roots(G1ParScanThreadState* pss, uint worker_id) {
   G1GCPhaseTimes* phase_times = _g1h->phase_times();
 
   G1EvacPhaseTimesTracker timer(phase_times, pss, G1GCPhaseTimes::ExtRootScan, worker_id);
 
   G1EvacuationRootClosures* closures = pss->closures();
-  process_java_roots(closures, phase_times, worker_id);
-
-  process_vm_roots(closures, phase_times, worker_id);
-
+    Log(gc, task, stats) log;
+    ResourceMark rm;
+    LogStream ls(log.info());
+    outputStream* st = &ls;
+    //处理java根
+    process_java_roots(closures, phase_times, worker_id);
+    st->print("process_java_roots \n");
+    process_vm_roots(closures, phase_times, worker_id);
+    st->print("process_vm_roots \n");
   {
     // Now the CM ref_processor roots.
     G1GCParPhaseTimesTracker x(phase_times, G1GCPhaseTimes::CMRefRoots, worker_id);

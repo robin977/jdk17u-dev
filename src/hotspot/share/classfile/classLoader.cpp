@@ -1218,13 +1218,14 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
   if (NULL == stream) {
     return NULL;
   }
-
+  // 检查类是否需要进行字节码验证。
   stream->set_verify(ClassLoaderExt::should_verify(classpath_index));
-
+ // 创建一个空的ClassLoaderData
   ClassLoaderData* loader_data = ClassLoaderData::the_null_class_loader_data();
   Handle protection_domain;
+    // 准备类加载信息
   ClassLoadInfo cl_info(protection_domain);
-
+// 从流中创建对象，返回InstanceKlass实例类引用
   InstanceKlass* result = KlassFactory::create_from_stream(stream,
                                                            name,
                                                            loader_data,

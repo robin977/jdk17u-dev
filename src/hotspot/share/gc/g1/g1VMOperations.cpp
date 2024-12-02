@@ -95,6 +95,7 @@ void VM_G1TryInitiateConcMark::doit() {
     // request will be remembered for a later partial collection, even though
     // we've rejected this request.
     _whitebox_attached = true;
+    //触发stw
   } else if (!g1h->do_collection_pause_at_safepoint(_target_pause_time_ms)) {
     // Failure to perform the collection at all occurs because GCLocker is
     // active, and we have the bad luck to be the collection request that

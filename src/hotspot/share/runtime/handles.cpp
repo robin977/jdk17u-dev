@@ -95,7 +95,7 @@ static uintx chunk_oops_do(OopClosure* f, Chunk* chunk, char* chunk_top) {
   uintx handles_visited = top - bottom;
   assert(top >= bottom && top <= (oop*) chunk->top(), "just checking");
   // during GC phase 3, a handle may be a forward pointer that
-  // is not yet valid, so loosen the assertion
+  // is not yet valid, so loosen the assertion 在GC阶段3，句柄可能是一个尚未有效的前向指针，因此要放松断言
   while (bottom < top) {
     f->do_oop(bottom++);
   }

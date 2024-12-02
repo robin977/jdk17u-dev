@@ -59,15 +59,17 @@ public:
   template <class T> void do_oop_work(T* p) {
     assert(_g1h->heap_region_containing(p)->is_in_reserved(p), "paranoia");
     assert(!_g1h->heap_region_containing(p)->is_survivor(), "Unexpected evac failure in survivor region");
-
+      log_info(gc)("do_oop_work");
     T const o = RawAccess<>::oop_load(p);
     if (CompressedOops::is_null(o)) {
       return;
     }
 
     if (HeapRegion::is_in_same_region(p, CompressedOops::decode(o))) {
-      return;
+      log_info(gc)("is_in_same_region");
+      return; // 如果对象和被引用对象在同一个Region中，则不需要处理
     }
+    // 如果在不同Region中，则需找到被引用者所在Region的RSet
     size_t card_index = _ct->index_for(p);
     if (card_index != _last_enqueued_card) {
       _rdc_local_qset->enqueue(_ct->byte_for_index(card_index));

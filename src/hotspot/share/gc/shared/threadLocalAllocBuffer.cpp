@@ -218,7 +218,7 @@ void ThreadLocalAllocBuffer::initialize() {
     float alloc_frac = desired_size() * target_refills() / (float)capacity;
     _allocation_fraction.sample(alloc_frac);
   }
-
+    log_info(gc, tlab)("ThreadLocalAllocBuffer::initialize HeapWordSize: %d,capacity: " SIZE_FORMAT "B",HeapWordSize,capacity);
   set_refill_waste_limit(initial_refill_waste_limit());
 
   reset_statistics();
@@ -263,7 +263,7 @@ void ThreadLocalAllocBuffer::startup_initialization() {
   guarantee(Thread::current()->is_Java_thread(), "tlab initialization thread not Java thread");
   Thread::current()->tlab().initialize();
 
-  log_develop_trace(gc, tlab)("TLAB min: " SIZE_FORMAT " initial: " SIZE_FORMAT " max: " SIZE_FORMAT,
+  log_develop_trace(gc, tlab)("ThreadLocalAllocBuffer startup_initialization TLAB min: " SIZE_FORMAT " initial: " SIZE_FORMAT " max: " SIZE_FORMAT,
                                min_size(), Thread::current()->tlab().initial_desired_size(), max_size());
 }
 

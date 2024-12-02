@@ -53,7 +53,8 @@ inline HeapWord* G1Allocator::attempt_allocation(size_t min_word_size,
                                                  size_t desired_word_size,
                                                  size_t* actual_word_size) {
   uint node_index = current_node_index();
-
+ //再去申请一次内存,_mutator_alloc_region内部有指向当前活跃的eden region,每次申请会从这里申请内存
+  //在每次gc之前会清空申请的内存
   HeapWord* result = mutator_alloc_region(node_index)->attempt_retained_allocation(min_word_size, desired_word_size, actual_word_size);
   if (result != NULL) {
     return result;

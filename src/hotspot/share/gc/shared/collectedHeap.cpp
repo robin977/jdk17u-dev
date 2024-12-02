@@ -157,7 +157,7 @@ void CollectedHeap::print_heap_before_gc() {
     ResourceMark rm;
     print_on(&ls);
   }
-
+   //gc前打印日志
   if (_gc_heap_log != NULL) {
     _gc_heap_log->log_heap_before(this);
   }

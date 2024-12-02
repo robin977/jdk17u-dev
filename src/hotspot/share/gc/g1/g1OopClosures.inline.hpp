@@ -230,15 +230,19 @@ void G1ParCopyClosure<barrier, should_mark>::do_oop_work(T* p) {
   assert(_worker_id == _par_scan_state->worker_id(), "sanity");
 
   const G1HeapRegionAttr state = _g1h->region_attr(obj);
+  // 如果对象属于CSet
   if (state.is_in_cset()) {
     oop forwardee;
     markWord m = obj->mark();
     if (m.is_marked()) {
+      // 如果已经复制过则直接返回复制后的新地址
       forwardee = cast_to_oop(m.decode_pointer());
     } else {
+      log_info(gc)("copy到survivor区 markWord  age: %d ", m.age()); //copy到survivor区
       forwardee = _par_scan_state->copy_to_survivor_space(state, obj, m);
     }
     assert(forwardee != NULL, "forwardee should not be NULL");
+    // 修改根集中指向该对象的引用，指向Survivor中复制后的对象
     RawAccess<IS_NOT_NULL>::oop_store(p, forwardee);
 
     if (barrier == G1BarrierCLD) {

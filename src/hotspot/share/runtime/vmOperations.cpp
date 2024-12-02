@@ -67,7 +67,7 @@ void VM_Operation::evaluate() {
     print_on_error(&ls);
     ls.cr();
   }
-  doit();
+  doit();  //vm线程执行STW
   if (lt.is_enabled()) {
     LogStream ls(lt);
     ls.print("end ");

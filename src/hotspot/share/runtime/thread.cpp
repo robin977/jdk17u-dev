@@ -2604,11 +2604,13 @@ void Threads::possibly_parallel_threads_do(bool is_par, ThreadClosure* tc) {
   uintx claim_token = Threads::thread_claim_token();
   ALL_JAVA_THREADS(p) {
     if (p->claim_threads_do(is_par, claim_token)) {
-      tc->do_thread(p);
+        log_info(gc)("parallel all java threads_do %s ",p->name());
+        tc->do_thread(p);
     }
   }
   VMThread* vmt = VMThread::vm_thread();
   if (vmt->claim_threads_do(is_par, claim_token)) {
+      log_info(gc)("parallel vm threads_do %s ",vmt->name());
     tc->do_thread(vmt);
   }
 }
@@ -2779,9 +2781,9 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   TraceVmCreationTime create_vm_timer;
   create_vm_timer.start();
 
-  // Initialize system properties.
+  // Initialize system properties. 初始化系统属性
   Arguments::init_system_properties();
-
+    log_info(os)("init_system_properties");
   // So that JDK version can be used as a discriminator when parsing arguments
   JDK_Version_init();
 
@@ -2875,7 +2877,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // Initialize OopStorage for threadObj
   _thread_oop_storage = OopStorageSet::create_strong("Thread OopStorage", mtThread);
 
-  // Attach the main thread to this os thread
+  // Attach the main thread to this os thread 将主线程附加到这个os线程
   JavaThread* main_thread = new JavaThread();
   main_thread->set_thread_state(_thread_in_vm);
   main_thread->initialize_thread_current();
@@ -2897,7 +2899,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // crash Linux VM, see notes in os_linux.cpp.
   main_thread->stack_overflow_state()->create_stack_guard_pages();
 
-  // Initialize Java-Level synchronization subsystem
+  // Initialize Java-Level synchronization subsystem 初始化java级同步子系统
   ObjectMonitor::Initialize();
   ObjectSynchronizer::initialize();
 
@@ -2924,7 +2926,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Create the VMThread
   { TraceTime timer("Start VMThread", TRACETIME_LOG(Info, startuptime));
-
+    //创建VMThread线程
     VMThread::create();
     Thread* vmthread = VMThread::vm_thread();
 

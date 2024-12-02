@@ -248,7 +248,7 @@ HeapWord* MemAllocator::allocate_outside_tlab(Allocation& allocation) const {
 
 HeapWord* MemAllocator::allocate_inside_tlab(Allocation& allocation) const {
   assert(UseTLAB, "should use UseTLAB");
-
+  //  printf("UseTLAB: %b \n",UseTLAB);
   // Try allocating from an existing TLAB.
   HeapWord* mem = _thread->tlab().allocate(_word_size);
   if (mem != NULL) {

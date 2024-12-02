@@ -350,12 +350,13 @@ HeapWord* G1ParScanThreadState::allocate_in_next_plab(G1HeapRegionAttr* dest,
 
 G1HeapRegionAttr G1ParScanThreadState::next_region_attr(G1HeapRegionAttr const region_attr, markWord const m, uint& age) {
   if (region_attr.is_young()) {
-    age = !m.has_displaced_mark_helper() ? m.age()
-                                         : m.displaced_mark_helper().age();
+    age = !m.has_displaced_mark_helper() ? m.age(): m.displaced_mark_helper().age();
+    //如果小于老年代伐值，还是同类型年代
     if (age < _tenuring_threshold) {
       return region_attr;
     }
   }
+  //否则去找一块老年代区域
   return dest(region_attr);
 }
 
@@ -381,6 +382,7 @@ HeapWord* G1ParScanThreadState::allocate_copy_slow(G1HeapRegionAttr* dest_attr,
                                                    uint node_index) {
   HeapWord* obj_ptr = NULL;
   // Try slow-path allocation unless we're allocating old and old is already full.
+
   if (!(dest_attr->is_old() && _old_gen_is_full)) {
     bool plab_refill_failed = false;
     obj_ptr = _plab_allocator->allocate_direct_or_new_plab(*dest_attr,
@@ -418,8 +420,7 @@ MAYBE_INLINE_EVACUATION
 oop G1ParScanThreadState::do_copy_to_survivor_space(G1HeapRegionAttr const region_attr,
                                                     oop const old,
                                                     markWord const old_mark) {
-  assert(region_attr.is_in_cset(),
-         "Unexpected region attr type: %s", region_attr.get_type_str());
+  assert(region_attr.is_in_cset(),"Unexpected region attr type: %s", region_attr.get_type_str());
 
   // Get the klass once.  We'll need it again later, and this avoids
   // re-decoding when it's compressed.
@@ -428,7 +429,12 @@ oop G1ParScanThreadState::do_copy_to_survivor_space(G1HeapRegionAttr const regio
 
   uint age = 0;
   G1HeapRegionAttr dest_attr = next_region_attr(region_attr, old_mark, age);
+
+  // log_info(gc)("do_copy_to_survivor_space klass %s，age %d,is_old %d ",klass->external_name(),age,dest_attr.is_old());
+
+  //获取old所在eden区
   HeapRegion* const from_region = _g1h->heap_region_containing(old);
+
   uint node_index = from_region->node_index();
 
   HeapWord* obj_ptr = _plab_allocator->plab_allocate(dest_attr, word_sz, node_index);
@@ -482,7 +488,7 @@ oop G1ParScanThreadState::do_copy_to_survivor_space(G1HeapRegionAttr const regio
         markWord new_mark = old_mark.displaced_mark_helper().set_age(age);
         old_mark.set_displaced_mark_helper(new_mark);
         obj->set_mark(old_mark);
-      } else {
+      } else { //给对象设置age
         obj->set_mark(old_mark.set_age(age));
       }
       _age_table.add(age, word_sz);
@@ -588,11 +594,11 @@ void G1ParScanThreadStateSet::record_unused_optional_region(HeapRegion* hr) {
     _g1h->phase_times()->record_or_add_thread_work_item(G1GCPhaseTimes::OptScanHR, worker_index, used_memory, G1GCPhaseTimes::ScanHRUsedMemory);
   }
 }
-
+//会在G1的转移阶段，将存活对象转移到Old区失败时调用
 NOINLINE
 oop G1ParScanThreadState::handle_evacuation_failure_par(oop old, markWord m) {
   assert(_g1h->is_in_cset(old), "Object " PTR_FORMAT " should be in the CSet", p2i(old));
-
+  //指向自己
   oop forward_ptr = old->forward_to_atomic(old, m, memory_order_relaxed);
   if (forward_ptr == NULL) {
     // Forward-to-self succeeded. We are the "owner" of the object.
@@ -601,10 +607,11 @@ oop G1ParScanThreadState::handle_evacuation_failure_par(oop old, markWord m) {
     if (_g1h->notify_region_failed_evacuation(r->hrm_index())) {
       _g1h->hr_printer()->evac_failure(r);
     }
-
+    //保存旧的markwork
     _g1h->preserve_mark_during_evac_failure(_worker_id, old, m);
 
     G1ScanInYoungSetter x(&_scanner, r->is_young());
+    //扫描转移失败对象的field，将它们push到pss的队列,涉及到对象引用的遍历操作
     old->oop_iterate_backwards(&_scanner);
 
     return old;

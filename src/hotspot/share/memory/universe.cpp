@@ -740,7 +740,7 @@ jint universe_init() {
 
   Metaspace::global_initialize();
 
-  // Initialize performance counters for metaspaces
+  // Initialize performance counters for metaspaces 初始化元空间的性能计数器
   MetaspaceCounters::initialize_performance_counters();
 
   // Checks 'AfterMemoryInit' constraints.
@@ -749,7 +749,7 @@ jint universe_init() {
   }
 
   // Create memory for metadata.  Must be after initializing heap for
-  // DumpSharedSpaces.
+  // DumpSharedSpaces. 元数据创建内存
   ClassLoaderData::init_null_class_loader_data();
 
   // We have a heap so create the Method* caches before
@@ -790,7 +790,7 @@ jint universe_init() {
 
   return JNI_OK;
 }
-
+//初始化堆内存
 jint Universe::initialize_heap() {
   assert(_collectedHeap == NULL, "Heap already created");
   _collectedHeap = GCConfig::arguments()->create_heap();
@@ -801,6 +801,7 @@ jint Universe::initialize_heap() {
 
 void Universe::initialize_tlab() {
   ThreadLocalAllocBuffer::set_max_size(Universe::heap()->max_tlab_size());
+  log_info(gc)("initialize_tlab set max_tlab_size: " SIZE_FORMAT, Universe::heap()->max_tlab_size());
   if (UseTLAB) {
     ThreadLocalAllocBuffer::startup_initialization();
   }

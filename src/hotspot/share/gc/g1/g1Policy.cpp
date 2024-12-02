@@ -591,7 +591,7 @@ bool G1Policy::need_to_start_conc_mark(const char* source, size_t alloc_word_siz
   }
 
   size_t marking_initiating_used_threshold = _ihop_control->get_conc_mark_start_threshold();
-
+  //cur_used_bytes表示是老年代与大对象之和
   size_t cur_used_bytes = _g1h->non_young_capacity_bytes();
   size_t alloc_byte_size = alloc_word_size * HeapWordSize;
   size_t marking_request_bytes = cur_used_bytes + alloc_byte_size;

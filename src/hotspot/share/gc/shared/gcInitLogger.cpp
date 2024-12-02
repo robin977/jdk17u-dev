@@ -103,10 +103,10 @@ void GCInitLogger::print_heap() {
 
 void GCInitLogger::print_workers() {
   if (ParallelGCThreads > 0) {
-    log_info_p(gc, init)("Parallel Workers: %u", ParallelGCThreads);
+    log_info_p(gc, init)("(ParallelGCThreads) Parallel Workers: %u", ParallelGCThreads);
   }
   if (ConcGCThreads > 0) {
-    log_info_p(gc, init)("Concurrent Workers: %u", ConcGCThreads);
+    log_info_p(gc, init)("(ConcGCThreads) Concurrent Workers: %u", ConcGCThreads);
   }
 }
 

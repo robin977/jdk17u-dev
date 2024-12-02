@@ -37,7 +37,7 @@ void G1InitLogger::print_heap() {
 void G1InitLogger::print_workers() {
   GCInitLogger::print_workers();
   if (G1ConcRefinementThreads > 0) {
-    log_info_p(gc, init)("Concurrent Refinement Workers: %u", G1ConcRefinementThreads);
+    log_info_p(gc, init)("(G1ConcRefinementThreads) Concurrent Refinement Workers: %u", G1ConcRefinementThreads);
   }
 }
 

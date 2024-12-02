@@ -142,7 +142,7 @@ HeapWord* G1AllocRegion::new_alloc_region_and_allocate(size_t word_size,
   if (new_alloc_region != NULL) {
     new_alloc_region->reset_pre_dummy_top();
     // Need to do this before the allocation
-    _used_bytes_before = new_alloc_region->used();
+    _used_bytes_before = new_alloc_region->used(); //在HeapRegion分配一块空间
     HeapWord* result = allocate(new_alloc_region, word_size);
     assert_alloc_region(result != NULL, "the allocation should succeeded");
 
